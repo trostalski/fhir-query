@@ -73,6 +73,7 @@ class FhirQueryClient(FhirClientBase):
         """
         Get a resource from the fhir server.
         """
+        logger.debug(f"Getting resource type: {resource_type}")
         self.ensure_auth()
         return self._get(
             resource_type=resource_type,
@@ -97,13 +98,19 @@ class FhirQueryClient(FhirClientBase):
         """
         Internal get method implementation
         """
+        logger.debug(
+            f"Internal get called with: resource_type={resource_type}, "
+            f"params={params}, full_url={full_url}, search_string={search_string}, "
+            f"use_post={use_post}, pages={pages}"
+        )
+
         # Ensure only one of params, search_string or full_url is provided
         provided_options = sum(
             [params is not None, search_string is not None, full_url is True]
         )
-        assert provided_options <= 1, (
-            "Only one of the following should be provided: params, search_string or full_url"
-        )
+        assert (
+            provided_options <= 1
+        ), "Only one of the following should be provided: params, search_string or full_url"
 
         if full_url:
             response = self.make_request(
@@ -122,6 +129,9 @@ class FhirQueryClient(FhirClientBase):
 
         if use_post or self.use_post:
             search_params = json.dumps(search_params)
+            logger.debug(
+                f"Making POST request to {resource_type}/_search with params: {search_params}"
+            )
             response = self.make_request(
                 method="POST",
                 url=urljoin(self.base_url, f"{resource_type}/_search"),
@@ -132,6 +142,7 @@ class FhirQueryClient(FhirClientBase):
             url = urljoin(self.base_url, f"{resource_type}")
             if search_params:
                 url = f"{url}?{search_params}"
+            logger.debug(f"Making GET request to: {url}")
             response = self.make_request(
                 method="GET",
                 url=url,
@@ -162,7 +173,14 @@ class FhirQueryClient(FhirClientBase):
         """
         Make a request to the fhir server.
         """
+        logger.debug(f"Making {method} request to {url}")
+        if headers:
+            logger.debug(f"With custom headers: {headers}")
+        if data:
+            logger.debug(f"With data: {data}")
+
         response = self.session.request(method, url, json=data, headers=headers)
+        logger.debug(f"Response status code: {response.status_code}")
         response.raise_for_status()
         return response.json()
 

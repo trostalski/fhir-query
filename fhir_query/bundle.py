@@ -1,7 +1,10 @@
 import pandas as pd
+import logging
 
 from fhir_query import utils
 from fhir_query.constants import DF_DEFAULT_COLUMNS
+
+logger = logging.getLogger(__name__)
 
 
 class FhirQueryBundle:
@@ -11,12 +14,17 @@ class FhirQueryBundle:
 
     def __init__(self, bundle: dict):
         self.data = bundle
+        logger.debug(
+            f"Initialized FhirQueryBundle with {len(bundle.get('entry', []))} entries"
+        )
 
     @property
     def resource(self) -> dict | None:
+        logger.debug(f"Accessing single resource, bundle size: {self.size}")
         if self.size == 1:
             return self.resources[0]
         elif self.size > 1:
+            logger.warning(f"Bundle contains {self.size} resources, expected 1")
             raise ValueError("Bundle contains more than one resource")
         else:
             return None
@@ -57,13 +65,22 @@ class FhirQueryBundle:
                 columns exist for the resource type.
         """
 
+        logger.debug(f"Converting bundle to DataFrame with {self.size} resources")
         if self.size == 0 and columns is None:
+            logger.warning(
+                "Attempted to convert empty bundle to DataFrame without columns"
+            )
             raise ValueError("Bundle is empty and no columns specified")
+
         first_resource_type = self.resources[0]["resourceType"]
+        logger.debug(f"Resource type: {first_resource_type}")
+
         if columns is None:
             if first_resource_type in DF_DEFAULT_COLUMNS:
                 columns = DF_DEFAULT_COLUMNS[first_resource_type]
+                logger.debug(f"Using default columns for {first_resource_type}")
             else:
+                logger.warning(f"No default columns found for {first_resource_type}")
                 raise ValueError(
                     f"No default columns for resource type: {first_resource_type}"
                 )
@@ -71,7 +88,9 @@ class FhirQueryBundle:
         return utils.bundle_to_df(self.data, columns)
 
     def add_bundle(self, bundle: dict):
-        self.data["entry"].extend(bundle.get("entry", []))
+        new_entries = bundle.get("entry", [])
+        logger.debug(f"Adding {len(new_entries)} entries to bundle")
+        self.data["entry"].extend(new_entries)
 
     def collect_resource_types(self) -> list[str]:
         return [resource["resourceType"] for resource in self.resources]

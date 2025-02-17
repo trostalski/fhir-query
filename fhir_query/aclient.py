@@ -92,6 +92,16 @@ class AsyncFhirQueryClient(FhirClientBase):
         """
         Get a resource from the FHIR server asynchronously.
         """
+        logger.debug(
+            "Making FHIR request - resource_type: %s, params: %s, full_url: %s, search_string: %s, use_post: %s, pages: %s",
+            resource_type,
+            params,
+            full_url,
+            search_string,
+            use_post,
+            pages,
+        )
+
         # Ensure only one of params, search_string or full_url is provided
         provided_options = sum(
             [params is not None, search_string is not None, full_url is True]
@@ -103,6 +113,7 @@ class AsyncFhirQueryClient(FhirClientBase):
         request_headers = {**self._headers, **(headers or {})}
 
         if full_url:
+            logger.debug("Making request with full URL: %s", full_url)
             response_data = await self.make_request(
                 method="GET",
                 url=full_url,
@@ -118,6 +129,11 @@ class AsyncFhirQueryClient(FhirClientBase):
             search_params = search_string
 
         if use_post or self.use_post:
+            logger.debug(
+                "Making POST request to %s with params: %s",
+                resource_type,
+                search_params,
+            )
             search_params = json.dumps(search_params) if search_params else None
             response_data = await self.make_request(
                 method="POST",
@@ -129,6 +145,7 @@ class AsyncFhirQueryClient(FhirClientBase):
             url = urljoin(self.base_url, f"{resource_type}")
             if search_params:
                 url = f"{url}?{search_params}"
+            logger.debug("Making GET request to: %s", url)
             response_data = await self.make_request(
                 method="GET",
                 url=url,
@@ -163,12 +180,21 @@ class AsyncFhirQueryClient(FhirClientBase):
         """
         Make an async request to the FHIR server.
         """
+        logger.debug(
+            "Making %s request to %s with headers: %s, data: %s",
+            method,
+            url,
+            headers,
+            data,
+        )
         async with aiohttp.ClientSession() as session:
             async with session.request(
                 method, url, json=data, headers=headers
             ) as response:
                 response.raise_for_status()
-                return await response.json()
+                response_data = await response.json()
+                logger.debug("Received response with status %d", response.status)
+                return response_data
 
     async def _setup_login_auth(self, login_url=None):
         """Setup login authentication by making a request to the login URL with credentials."""
