@@ -1,10 +1,10 @@
 import pandas as pd
 
-from fhir_query_client import utils
-from fhir_query_client.constants import DF_DEFAULT_COLUMNS
+from fhir_query import utils
+from fhir_query.constants import DF_DEFAULT_COLUMNS
 
 
-class FQCBundle:
+class FhirQueryBundle:
     """
     A custom bundle to abstract the bundle response from the fhir server.
     """

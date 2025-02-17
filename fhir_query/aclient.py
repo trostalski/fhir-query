@@ -1,37 +1,36 @@
-import base64
 import json
 import logging
 from typing import Literal
 from urllib.parse import urlencode, urljoin
 
-from requests import Session
+import aiohttp
 
-from fhir_query_client.base import FhirClientBase
-from fhir_query_client.bundle import FQCBundle
-from fhir_query_client.resource_types import ResourceType
+from fhir_query.base import FhirClientBase
+from fhir_query.bundle import FhirQueryBundle
+from fhir_query.resource_types import ResourceType
 
 logger = logging.getLogger(__name__)
 
 
-class FhirQueryClient(FhirClientBase):
+class AsyncFhirQueryClient(FhirClientBase):
     """
-    Client for querying a fhir server.
+    Async client for querying a FHIR server.
     """
 
     def __init__(
         self,
-        base_url: str,
-        use_post: bool = False,
-        session: Session = None,
-        headers: dict = None,
-        auth_method: Literal["basic", "token", "login"] = None,
-        login_url: str = None,
-        username: str = None,
-        password: str = None,
-        token: str = None,
+        base_url,
+        use_post=False,
+        headers=None,
+        auth_method=None,
+        login_url=None,
+        username=None,
+        password=None,
+        session=None,
+        token=None,
     ):
         self._headers = headers or {}
-        self.session = session or Session()
+        self.session = None
 
         super().__init__(
             base_url=base_url,
@@ -44,24 +43,25 @@ class FhirQueryClient(FhirClientBase):
         )
 
         self.use_post = use_post
-        self.session.headers.update(self._headers)
+        self.session = session
 
-        # Handle login auth after initialization
+        # Handle async login auth after initialization
         if self.auth_method == "login":
             self._pending_login_auth = True
         else:
             self._pending_login_auth = False
 
-    def ensure_auth(self):
+    def _get_headers(self) -> dict:
+        """Get the current headers dictionary."""
+        return self._headers
+
+    async def ensure_auth(self):
         """Ensure authentication is set up"""
         if self._pending_login_auth and self.login_url:
-            self._setup_login_auth(self.login_url)
+            await self._setup_login_auth(self.login_url)
             self._pending_login_auth = False
 
-    def _get_headers(self) -> dict:
-        return self.session.headers
-
-    def get(
+    async def get(
         self,
         resource_type: ResourceType,
         params: dict = None,
@@ -72,20 +72,14 @@ class FhirQueryClient(FhirClientBase):
         headers: dict = None,
     ):
         """
-        Get a resource from the fhir server.
+        Get a resource from the FHIR server asynchronously.
         """
-        self.ensure_auth()
-        return self._get(
-            resource_type=resource_type,
-            params=params,
-            full_url=full_url,
-            search_string=search_string,
-            use_post=use_post,
-            pages=pages,
-            headers=headers,
+        await self.ensure_auth()
+        return await self._get(
+            resource_type, params, full_url, search_string, use_post, pages, headers
         )
 
-    def _get(
+    async def _get(
         self,
         resource_type: ResourceType,
         params: dict = None,
@@ -96,7 +90,7 @@ class FhirQueryClient(FhirClientBase):
         headers: dict = None,
     ):
         """
-        Internal get method implementation
+        Get a resource from the FHIR server asynchronously.
         """
         # Ensure only one of params, search_string or full_url is provided
         provided_options = sum(
@@ -106,13 +100,15 @@ class FhirQueryClient(FhirClientBase):
             provided_options <= 1
         ), "Only one of the following should be provided: params, search_string or full_url"
 
+        request_headers = {**self._headers, **(headers or {})}
+
         if full_url:
-            response = self.make_request(
+            response_data = await self.make_request(
                 method="GET",
                 url=full_url,
-                headers=headers,
+                headers=request_headers,
             )
-            return FQCBundle(response)
+            return FhirQueryBundle(response_data)
 
         search_params = None
 
@@ -122,24 +118,24 @@ class FhirQueryClient(FhirClientBase):
             search_params = search_string
 
         if use_post or self.use_post:
-            search_params = json.dumps(search_params)
-            response = self.make_request(
+            search_params = json.dumps(search_params) if search_params else None
+            response_data = await self.make_request(
                 method="POST",
                 url=urljoin(self.base_url, f"{resource_type}/_search"),
                 data=search_params,
-                headers=headers,
+                headers=request_headers,
             )
         else:
             url = urljoin(self.base_url, f"{resource_type}")
             if search_params:
                 url = f"{url}?{search_params}"
-            response = self.make_request(
+            response_data = await self.make_request(
                 method="GET",
                 url=url,
-                headers=headers,
+                headers=request_headers,
             )
 
-        fqc_bundle = FQCBundle(response)
+        fqc_bundle = FhirQueryBundle(response_data)
 
         if pages and pages > 1:
             remaining_pages = pages - 1
@@ -147,13 +143,17 @@ class FhirQueryClient(FhirClientBase):
                 next_link = fqc_bundle.next_link
                 if not next_link:
                     break
-                response = self.make_request(method="GET", url=next_link)
-                fqc_bundle.add_bundle(response)
+                response_data = await self.make_request(
+                    method="GET",
+                    url=next_link,
+                    headers=request_headers,
+                )
+                fqc_bundle.add_bundle(response_data)
                 remaining_pages -= 1
 
         return fqc_bundle
 
-    def make_request(
+    async def make_request(
         self,
         method: Literal["GET", "POST"],
         url: str,
@@ -161,13 +161,16 @@ class FhirQueryClient(FhirClientBase):
         headers: dict = None,
     ):
         """
-        Make a request to the fhir server.
+        Make an async request to the FHIR server.
         """
-        response = self.session.request(method, url, json=data, headers=headers)
-        response.raise_for_status()
-        return response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                method, url, json=data, headers=headers
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
 
-    def _setup_login_auth(self, login_url):
+    async def _setup_login_auth(self, login_url=None):
         """Setup login authentication by making a request to the login URL with credentials."""
         logger.debug("Configuring login auth with username and password")
         if not self.username or not self.password:
@@ -178,10 +181,18 @@ class FhirQueryClient(FhirClientBase):
             raise ValueError("login_url is required for login authentication")
 
         url = login_url or self.login_url
-        response = self.session.get(
-            url, auth=(self.username, self.password), headers=self._headers
-        )
-        response.raise_for_status()
-        self.token = response.text
-        logger.info("Login authentication successful")
-        self._setup_token_auth(self.token)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url,
+                auth=aiohttp.BasicAuth(self.username, self.password),
+                headers=self._headers,
+            ) as response:
+                response.raise_for_status()
+                try:
+                    # First try to parse as JSON
+                    self.token = await response.json()
+                except aiohttp.ContentTypeError:
+                    # If that fails, get as text
+                    self.token = await response.text()
+                logger.info("Login authentication successful")
+                self._setup_token_auth(self.token)

@@ -1,4 +1,4 @@
-# fhir-query-client
+# fhir-query
 
 A Python client library for querying FHIR servers with support for both synchronous and asynchronous operations.
 
@@ -14,7 +14,7 @@ A Python client library for querying FHIR servers with support for both synchron
 ## Installation
 
 ```bash
-pip install fhir-query-client
+pip install fhir-query
 ```
 
 ## Quick Start
@@ -22,7 +22,7 @@ pip install fhir-query-client
 ### Synchronous Client
 
 ```python
-from fhir_query_client import FhirQueryClient
+from fhir_query import FhirQueryClient
 
 # Initialize the client
 client = FhirQueryClient(
@@ -46,7 +46,7 @@ first_patient = response.resource  # If only one result
 ### Asynchronous Client
 
 ```python
-from fhir_query_client import AsyncFhirQueryClient
+from fhir_query import AsyncFhirQueryClient
 import asyncio
 
 async def main():

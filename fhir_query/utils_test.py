@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from fhir_query_client.utils import (bundle_to_df, collect_many_paths,
+from fhir_query.utils import (bundle_to_df, collect_many_paths,
                                      get_id_from_reference,
                                      get_id_from_reference_url, get_link,
                                      get_next_link, get_previous_link,

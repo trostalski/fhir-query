@@ -1,11 +1,10 @@
-import json
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from requests import Response, Session
 
-from fhir_query_client.bundle import FQCBundle
-from fhir_query_client.client import FhirQueryClient
+from fhir_query.bundle import FhirQueryBundle
+from fhir_query.client import FhirQueryClient
 
 
 @pytest.fixture
@@ -48,7 +47,7 @@ def test_get_with_params(client, mock_response):
         resource_type="Patient", params={"name": "Smith", "_count": "1"}
     )
 
-    assert isinstance(result, FQCBundle)
+    assert isinstance(result, FhirQueryBundle)
     client.session.request.assert_called_once_with(
         "GET",
         "https://test.fhir.server/fhir/Patient?name=Smith&_count=1",
@@ -63,7 +62,7 @@ def test_get_with_search_string(client, mock_response):
 
     result = client.get(resource_type="Patient", search_string="name=Smith&_count=1")
 
-    assert isinstance(result, FQCBundle)
+    assert isinstance(result, FhirQueryBundle)
     client.session.request.assert_called_once_with(
         "GET",
         "https://test.fhir.server/fhir/Patient?name=Smith&_count=1",
@@ -85,7 +84,7 @@ def test_get_with_post_search(client, mock_response):
         resource_type="Patient", params={"name": "Smith"}, use_post=True
     )
 
-    assert isinstance(result, FQCBundle)
+    assert isinstance(result, FhirQueryBundle)
     client.session.request.assert_called_once_with(
         "POST",
         "https://test.fhir.server/fhir/Patient/_search",
@@ -121,7 +120,7 @@ def test_get_with_pagination(client):
 
     result = client.get(resource_type="Patient", params={"name": "Smith"}, pages=2)
 
-    assert isinstance(result, FQCBundle)
+    assert isinstance(result, FhirQueryBundle)
     assert len(client.session.request.call_args_list) == 2
 
 

@@ -1,9 +1,9 @@
 [project]
-name = "fhir-query-client"
+name = "fhir-query"
 version = "0.1.0"
-description = "Add your description here"
+description = "A simple client for querying FHIR servers"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 dependencies = [
     "aiohttp>=3.11.12",
     "fhirpathpy>=1.2.1",
@@ -20,6 +20,10 @@ dev = [
     "ruff>=0.9.6",
 ]
 
-[tool.pytest.ini_options]
-asyncio_mode = "strict"
-asyncio_default_fixture_loop_scope = "function"
+[tool.uv]
+dev-dependencies = [
+    "isort>=6.0.0",
+    "pytest-asyncio>=0.25.3",
+    "pytest>=8.3.4",
+    "ruff>=0.9.6",
+]

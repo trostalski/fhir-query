@@ -3,7 +3,7 @@ from typing import Any, Dict
 import pandas as pd
 import pytest
 
-from fhir_query_client.bundle import FQCBundle
+from fhir_query.bundle import FhirQueryBundle
 
 
 # Test fixtures
@@ -105,45 +105,45 @@ def observation_bundle() -> Dict[str, Any]:
 
 
 def test_init_with_bundle(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     assert bundle.size == 2
     assert bool(bundle)
 
 
 def test_init_with_single_resource():
     resource = {"resourceType": "Patient", "id": "test"}
-    bundle = FQCBundle({"resourceType": "Bundle", "entry": [{"resource": resource}]})
+    bundle = FhirQueryBundle({"resourceType": "Bundle", "entry": [{"resource": resource}]})
     assert bundle.size == 1
     assert bundle.resource == resource
 
 
 def test_empty_bundle(empty_bundle):
-    bundle = FQCBundle(empty_bundle)
+    bundle = FhirQueryBundle(empty_bundle)
     assert not bool(bundle)
     assert bundle.size == 0
 
 
 def test_collect_resource_types(mixed_bundle):
-    bundle = FQCBundle(mixed_bundle)
+    bundle = FhirQueryBundle(mixed_bundle)
     types = bundle.collect_resource_types()
     assert set(types) == {"Patient", "Observation"}
 
 
 def test_collect_resources_by_type(mixed_bundle):
-    bundle = FQCBundle(mixed_bundle)
+    bundle = FhirQueryBundle(mixed_bundle)
     patients = bundle.collect_resources_by_type("Patient")
     assert len(patients) == 1
     assert patients[0]["id"] == "patient-1"
 
 
 def test_collect_ids(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     ids = bundle.collect_ids()
     assert ids == ["patient-1", "patient-2"]
 
 
 def test_to_df(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     columns = {"id": "id", "family_name": "name[0].family", "birth_date": "birthDate"}
     df = bundle.to_df(columns)
     assert isinstance(df, pd.DataFrame)
@@ -152,31 +152,31 @@ def test_to_df(patient_bundle):
 
 
 def test_to_df_empty_bundle_raises(empty_bundle):
-    bundle = FQCBundle(empty_bundle)
+    bundle = FhirQueryBundle(empty_bundle)
     with pytest.raises(ValueError, match="Bundle is empty and no columns specified"):
         bundle.to_df()
 
 
 def test_iteration(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     resources = [resource for resource in bundle]
     assert len(resources) == 2
     assert all(r["resourceType"] == "Patient" for r in resources)
 
 
 def test_getitem(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     assert bundle[0]["resourceType"] == "Patient"
     assert bundle[0]["id"] == "patient-1"
 
 
 def test_len(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     assert len(bundle) == 2
 
 
 def test_contains(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     resource = bundle[0]
     assert resource in bundle
 
@@ -192,7 +192,7 @@ def test_bundle_properties():
         ],
         "entry": [{"resource": {"resourceType": "Patient", "id": "1"}}],
     }
-    bundle = FQCBundle(bundle_data)
+    bundle = FhirQueryBundle(bundle_data)
 
     assert bundle.total == 100
     assert bundle.next_link == "http://example.com/next"
@@ -200,7 +200,7 @@ def test_bundle_properties():
 
 
 def test_str_and_repr(patient_bundle):
-    bundle = FQCBundle(patient_bundle)
+    bundle = FhirQueryBundle(patient_bundle)
     str_repr = str(bundle)
     repr_str = repr(bundle)
     assert "FQCBundle" in str_repr
@@ -219,7 +219,7 @@ def test_add_bundle():
         "entry": [{"resource": {"resourceType": "Patient", "id": "2"}}],
     }
 
-    bundle = FQCBundle(initial_bundle)
+    bundle = FhirQueryBundle(initial_bundle)
     assert bundle.size == 1
 
     bundle.add_bundle(additional_bundle)
