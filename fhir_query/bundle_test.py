@@ -112,7 +112,9 @@ def test_init_with_bundle(patient_bundle):
 
 def test_init_with_single_resource():
     resource = {"resourceType": "Patient", "id": "test"}
-    bundle = FhirQueryBundle({"resourceType": "Bundle", "entry": [{"resource": resource}]})
+    bundle = FhirQueryBundle(
+        {"resourceType": "Bundle", "entry": [{"resource": resource}]}
+    )
     assert bundle.size == 1
     assert bundle.resource == resource
 

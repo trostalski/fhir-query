@@ -24,6 +24,7 @@ def client(mock_session):
 @pytest.fixture
 def mock_response():
     response = Mock(spec=Response)
+    response.status_code = 200
     response.json.return_value = {
         "resourceType": "Bundle",
         "type": "searchset",
@@ -97,6 +98,7 @@ def test_get_with_pagination(client):
     """Test get method with pagination"""
     # Create responses for initial request and subsequent page
     first_response = Mock(spec=Response)
+    first_response.status_code = 200
     first_response.json.return_value = {
         "resourceType": "Bundle",
         "type": "searchset",
@@ -110,6 +112,7 @@ def test_get_with_pagination(client):
     }
 
     second_response = Mock(spec=Response)
+    second_response.status_code = 200
     second_response.json.return_value = {
         "resourceType": "Bundle",
         "type": "searchset",

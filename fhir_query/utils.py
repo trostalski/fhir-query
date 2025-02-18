@@ -4,6 +4,43 @@ import pandas as pd
 from fhirpathpy import compile
 
 
+def safe_get(target: dict | list, *attrs, default: Any = None) -> Any:
+    """Safely access nested attributes in a dictionary or list structure.
+
+    Args:
+        target: The target object (dictionary or list) to access.
+        *attrs: Sequence of attributes, keys, or indices to access nested values.
+
+    Returns:
+        Any: The value at the specified path, or None if any part of the path is invalid.
+
+    Example:
+        >>> data = {"a": [{"b": 1}]}
+        >>> safe_get(data, "a", 0, "b")
+        1
+        >>> safe_get(data, "x", 0)
+        None
+    """
+    for attr in attrs:
+        try:
+            # Check if the target is a dict or list, and then attempt to access the item.
+            if isinstance(target, dict) and attr in target:
+                target = target[attr]
+            elif (
+                isinstance(target, list)
+                and isinstance(attr, int)
+                and attr < len(target)
+            ):
+                target = target[attr]
+            else:
+                # If the attr is not a valid index/key, or the target is not a dict/list, return None
+                return default
+        except (TypeError, IndexError, KeyError):
+            # If any exception occurred due to invalid indexing/key, return None
+            return default
+    return target
+
+
 def get_link(bundle: dict, relation: Literal["next", "previous", "self"]) -> str | None:
     """Extract a link from a FHIR Bundle.
 
@@ -130,13 +167,62 @@ def get_id_from_reference(reference: dict) -> str:
     return reference.get("reference", "").split("/")[-1]
 
 
-def get_id_from_reference_url(reference: dict) -> str:
+def get_id_from_reference_url(reference_url: str) -> str:
     """Extract the resource ID from a FHIR reference URL.
 
     Args:
-        reference: FHIR reference string (e.g., {"reference": "Patient/123"}).
+        reference_url: FHIR reference URL (e.g., "Patient/123").
 
     Returns:
         str: The extracted resource ID.
     """
-    return reference.get("reference", "").split("/")[-1]
+    return reference_url.split("/")[-1]
+
+
+def is_absolute_url(url: str) -> bool:
+    """Check if a URL is absolute.
+
+    Args:
+        url: The URL to check.
+    """
+    return url.startswith("http")
+
+
+def merge_url_with_path(url: str, path: str) -> str:
+    """Merge a URL with a path, handling overlapping path segments.
+
+    Args:
+        url: The base URL to merge (e.g., 'https://ship.ume.de/app/FHIR/r4')
+        path: The path to merge (e.g., '/app/FHIR/r4/Encounter/123')
+
+    Returns:
+        str: The merged URL with duplicated path segments removed
+
+    Example:
+        >>> merge_url_with_path('https://ship.ume.de/app/FHIR/r4', '/app/FHIR/r4/Encounter/123')
+        'https://ship.ume.de/app/FHIR/r4/Encounter/123'
+    """
+    # Strip trailing slash from url and leading slash from path
+    url = url.rstrip("/")
+    path = path.lstrip("/")
+
+    # Split both URLs into segments
+    url_parts = url.split("/")
+    path_parts = path.split("/")
+
+    # Find where the overlap begins
+    overlap_start = -1
+    for i in range(len(url_parts)):
+        remaining_url = url_parts[i:]
+        if path.startswith("/".join(remaining_url)):
+            overlap_start = i
+            break
+
+    if overlap_start != -1:
+        # Keep the URL parts up to the overlap, then add the path
+        result = "/".join(url_parts[:overlap_start] + path_parts)
+    else:
+        # No overlap found, just join them
+        result = f"{url}/{path}"
+
+    return result

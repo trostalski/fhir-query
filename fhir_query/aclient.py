@@ -8,6 +8,7 @@ import aiohttp
 from fhir_query.base import FhirClientBase
 from fhir_query.bundle import FhirQueryBundle
 from fhir_query.resource_types import ResourceType
+from fhir_query.utils import is_absolute_url, merge_url_with_path
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +107,9 @@ class AsyncFhirQueryClient(FhirClientBase):
         provided_options = sum(
             [params is not None, search_string is not None, full_url is True]
         )
-        assert (
-            provided_options <= 1
-        ), "Only one of the following should be provided: params, search_string or full_url"
+        assert provided_options <= 1, (
+            "Only one of the following should be provided: params, search_string or full_url"
+        )
 
         request_headers = {**self._headers, **(headers or {})}
 
@@ -160,11 +161,18 @@ class AsyncFhirQueryClient(FhirClientBase):
                 next_link = fqc_bundle.next_link
                 if not next_link:
                     break
-                response_data = await self.make_request(
-                    method="GET",
-                    url=next_link,
-                    headers=request_headers,
-                )
+                if is_absolute_url(next_link):
+                    response_data = await self.make_request(
+                        method="GET",
+                        url=next_link,
+                        headers=request_headers,
+                    )
+                else:
+                    response_data = await self.make_request(
+                        method="GET",
+                        url=merge_url_with_path(self.base_url, next_link),
+                        headers=request_headers,
+                    )
                 fqc_bundle.add_bundle(response_data)
                 remaining_pages -= 1
 

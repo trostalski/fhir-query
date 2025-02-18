@@ -2,11 +2,11 @@ import pandas as pd
 import pytest
 
 from fhir_query.utils import (bundle_to_df, collect_many_paths,
-                                     get_id_from_reference,
-                                     get_id_from_reference_url, get_link,
-                                     get_next_link, get_previous_link,
-                                     get_resources_from_bundle, get_self_link,
-                                     resource_iter)
+                              get_id_from_reference, get_id_from_reference_url,
+                              get_link, get_next_link, get_previous_link,
+                              get_resources_from_bundle, get_self_link,
+                              is_absolute_url, merge_url_with_path,
+                              resource_iter)
 
 
 @pytest.fixture
@@ -113,8 +113,26 @@ def test_get_id_from_reference():
     assert get_id_from_reference({"reference": ""}) == ""
 
 
+def test_is_absolute_url():
+    assert is_absolute_url("https://api/Patient/123")
+    assert not is_absolute_url("Patient/123")
+
+
+def test_merge_url_with_path():
+    assert (
+        merge_url_with_path("https://api/Patient", "Patient/123")
+        == "https://api/Patient/123"
+    )
+    assert (
+        merge_url_with_path("https://api/Patient/", "Patient/123")
+        == "https://api/Patient/123"
+    )
+    assert (
+        merge_url_with_path("https://api", "/Patient/123") == "https://api/Patient/123"
+    )
+
+
 def test_get_id_from_reference_url():
-    reference = {"reference": "https://api/Patient/123"}
+    reference = "https://api/Patient/123"
     assert get_id_from_reference_url(reference) == "123"
-    assert get_id_from_reference_url({}) == ""
-    assert get_id_from_reference_url({"reference": ""}) == ""
+    assert get_id_from_reference_url("") == ""

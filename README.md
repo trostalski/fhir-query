@@ -30,16 +30,15 @@ client = FhirQueryClient(
 )
 
 # Query patients
-response = client.get(
-    resource_type="Patient",
-    params={"family": "Smith"}
-)
+response = client.get(resource_type="Patient", params={"family": "Smith"})
 
 # Access the raw bundle
 bundle = response.data
+print(bundle)
 
 # Access the resources
-resources = bundle.resources
+resources = response.resources
+print(resources)
 ```
 
 ### Asynchronous Client

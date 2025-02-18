@@ -1,8 +1,10 @@
-import pandas as pd
 import logging
+
+import pandas as pd
 
 from fhir_query import utils
 from fhir_query.constants import DF_DEFAULT_COLUMNS
+from fhir_query.resource_types import ResourceType
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +97,7 @@ class FhirQueryBundle:
     def collect_resource_types(self) -> list[str]:
         return [resource["resourceType"] for resource in self.resources]
 
-    def collect_resources_by_type(self, resource_type: str) -> list[dict]:
+    def collect_resources_by_type(self, resource_type: ResourceType) -> list[dict]:
         return [
             resource
             for resource in self.resources
